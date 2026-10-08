@@ -3,7 +3,6 @@ import Google from "next-auth/providers/google";
  
 export const { handlers, auth, signIn, signOut } = NextAuth({ 
   trustHost: true, 
-  // เติม: provider ของ Google ที่ import มาด้านบน 
   providers: [Google], 
   callbacks: { 
     authorized({ auth, request }) { 

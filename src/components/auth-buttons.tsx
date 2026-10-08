@@ -26,8 +26,7 @@ export function AuthButtons({ isLoggedIn, userName }: AuthButtonsProps) {
     <form 
       action={async () => { 
         "use server"; 
-        // เติม: ชื่อ provider ของ Google (ตัวพิมพ์เล็ก) 
-        await signIn("________", { redirectTo: "/" }); 
+        await signIn("google", { redirectTo: "/" }); 
       }} 
     > 
       <button type="submit">Login with Google</button> 

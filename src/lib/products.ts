@@ -1,135 +1,90 @@
-export type Product = { 
-
-  id: string 
-
-  name: string 
-
-  price: number 
-
-  description: string 
-
-} 
-
-
-const initialProducts: Product[] = [ 
-
-  { 
-
-    id: "p001", 
-
-    name: "Mechanical Keyboard", 
-
-    price: 2590, 
-
-    description: "คีย์บอร์ด Mechanical สำหรับทำงานและเล่นเกม", 
-
-  }, 
-
-  { 
-
-    id: "p002", 
-
-    name: "Wireless Mouse",
- price: 1290, 
-
-    description: "เมาส์ไร้สาย น้ำหนักเบา", 
-
-  }, 
-
-  { 
-
-    id: "p003", 
-
-    name: "USB-C Hub", 
-
-    price: 1890, 
-
-    description: "USB-C Hub พร้อม HDMI และ Card Reader", 
-
-  }, 
-
-] 
-
- 
-
-declare global { 
-
-  // eslint-disable-next-line no-var 
-
-  var demoProducts: Product[] | undefined 
-
-} 
-
- 
-
-const products = 
-
-  globalThis.demoProducts ?? 
-
-  structuredClone(initialProducts) 
-
- 
-
-if (process.env.NODE_ENV !== "production") { 
-
-  globalThis.demoProducts = products 
-
-} 
- 
-
-export function getProducts() { 
-
-  return products 
-
-} 
-
-
-export function getProduct(id: string) { 
-
-  return products.find((product) => product.id === id) 
-
-} 
- 
-
-export function updateProduct( 
-
-  id: string, 
-
-  values: Pick<Product, "name" | "price" | "description">, 
-
-) { 
-
-  const product = getProduct(id) 
-
- 
-
-  if (!product) { 
-
-    throw new Error("Product not found") 
-
-  } 
- 
-  product.name = values.name 
-
-  product.price = values.price 
-
-  product.description = values.description 
-
-} 
-
-
-export function deleteProduct(id: string) { 
-
-  const index = products.findIndex((product) => product.id === id) 
-
- 
-  if (index === -1) { 
-
-    throw new Error("Product not found") 
-
-  } 
-
- 
-  products.splice(index, 1) 
-
+import { z } from "zod";
+
+export const CATEGORIES = [
+  "beauty", "fragrances", "furniture", "groceries",
+  "home-decoration", "kitchen-accessories", "laptops",
+  "mens-shirts", "mens-shoes", "mens-watches",
+  "mobile-accessories", "motorcycle", "skin-care",
+  "smartphones", "sports-accessories", "sunglasses",
+  "tablets", "tops", "vehicle", "womens-bags",
+  "womens-dresses", "womens-jewellery", "womens-shoes", "womens-watches",
+] as const;
+
+export const ProductSchema = z.object({
+  id: z.number(),
+  title: z.string().trim().min(1, "กรุณากรอกชื่อสินค้า"),
+  price: z.coerce.number().min(0, "ราคาต้องไม่ติดลบ"),
+  stock: z.coerce.number().min(0, "จำนวนคงเหลือต้องไม่ติดลบ"),
+  category: z.string(),
+  description: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  thumbnail: z.string().optional(),
+});
+
+export const ProductListSchema = z.object({
+  products: z.array(ProductSchema),
+  total: z.number(),
+});
+
+export type Product = z.infer<typeof ProductSchema>;
+
+const BASE_URL = "https://dummyjson.com/products";
+let memoryProducts: Product[] = [];
+export async function getProducts(): Promise<Product[]> {
+  if (memoryProducts.length > 0) {
+    return memoryProducts;
+  }
+  try {
+    const res = await fetch(`${BASE_URL}?limit=20`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const parsed = ProductListSchema.safeParse(data);
+    if (parsed.success) {
+      memoryProducts = parsed.data.products;
+      return memoryProducts;
+    }
+    return [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getProduct(id: string | number): Promise<Product | undefined> {
+  const numericId = Number(id);
+  const found = memoryProducts.find((p) => p.id === numericId);
+  if (found) return found;
+
+  try {
+    const res = await fetch(`${BASE_URL}/${id}`, { cache: 'no-store' });
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    return ProductSchema.parse(data);
+  } catch (error) {
+    return undefined;
+  }
+}
+
+export function updateProduct(
+  id: string | number,
+  values: Pick<Product, "title" | "price" | "description" | "category" | "stock">
+) {
+  const numericId = Number(id);
+  const product = memoryProducts.find((p) => p.id === numericId);
+  if (!product) {
+    throw new Error("Product not found");
+  }
+  product.title = values.title;
+  product.price = values.price;
+  product.description = values.description;
+  product.category = values.category;
+  product.stock = values.stock;
+}
+
+export function deleteProduct(id: string | number) {
+  const numericId = Number(id);
+  const index = memoryProducts.findIndex((p) => p.id === numericId);
+  if (index === -1) {
+    throw new Error("Product not found");
+  }
+  memoryProducts.splice(index, 1);
 }
